@@ -1,0 +1,277 @@
+version: 2
+
+models:
+  - name: stg_localbike__brands
+    description: "This model contains information about bike brands"
+    columns:
+      - name: brand_id
+        description: "Primary key, unique identifier for each brand."
+        tests:
+          - unique
+          - not_null
+      - name: brand_name
+        description: "Name of the brand"
+        tests:
+          - not_null
+
+  - name: stg_localbike__categories
+    description: "This model contains product categories"
+    columns:
+      - name: category_id
+        description: "Primary key, unique identifier for each category."
+        tests:
+          - unique
+          - not_null
+      - name: category_name
+        description: "Name of the category"
+        tests:
+          - not_null
+
+  - name: stg_localbike__customers
+    description: "This model contains customer information"
+    columns:
+      - name: customer_id
+        description: "Primary key, unique identifier for each customer."
+        tests:
+          - unique
+          - not_null
+      - name: first_name
+        description: "Customer's first name"
+      - name: last_name
+        description: "Customer's last name"
+      - name: phone
+        description: "Customer's phone number"
+      - name: email
+        description: "Customer's email address"
+        tests:
+          - unique
+      - name: street
+        description: "Street address"
+      - name: city
+        description: "City"
+      - name: state
+        description: "State (2-letter code)"
+      - name: zip_code
+        description: "ZIP code"
+    tests:
+        - dbt_utils.expression_is_true:
+            expression: "email LIKE '%@%.%'"
+            name: valid_email_format
+  - name: stg_localbike__orders
+    description: "This model contains order information"
+    columns:
+      - name: order_id
+        description: "Primary key, unique identifier for each order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Foreign key, referenced in customers table"
+        tests:
+          - not_null
+          - relationships:
+              name: customer_id_foreign_key_in_stg_localbike__orders
+              to:   ref('stg_localbike__customers') 
+              field: customer_id
+      - name: order_status
+        description: "Status of the order"
+        tests:
+          - accepted_values:
+              values: ['1', '2', '3', '4']
+              quote: false
+      - name: order_date
+        description: "Date when the order was placed"
+        tests:
+          - not_null
+      - name: required_date
+        description: "Date when the order is required"
+      - name: shipped_date
+        description: "Date when the order was shipped"
+      - name: store_id
+        description: "Foreign key, referenced in stores table"
+        tests:
+          - relationships:
+              name: store_id_foreign_key_in_stg_localbike__orders
+              to:  ref('stg_localbike__stores')
+              field: store_id
+      - name: staff_id
+        description: "Foreign key, referenced in staffs table"
+        tests:
+          - relationships:
+              name: staff_id_foreign_key_in_stg_localbike__orders
+              to:  ref('stg_localbike__staffs')
+              field: staff_id
+
+  - name: stg_localbike__order_items
+    description: "This model contains individual items within orders"
+    columns:
+      - name: order_id
+        description: "Foreign key, referenced in orders table"
+        tests:
+          - not_null
+          - relationships:
+              name: order_id_foreign_key_in_stg_localbike__order_items
+              to:  ref('stg_localbike__orders')
+              field: order_id
+      - name: item_id
+        description: "Item identifier within the order"
+        tests:
+          - not_null
+      - name: product_id
+        description: "Foreign key, referenced in products table"
+        tests:
+          - not_null
+          - relationships:
+              name: product_id_foreign_key_in_stg_localbike__order_items
+              to:  ref('stg_localbike__products')
+              field: product_id
+      - name: quantity
+        description: "Quantity of the product ordered"
+        tests:
+          - not_null
+      - name: list_price
+        description: "Price per unit at the time of order"
+        tests:
+          - not_null
+        
+      - name: discount
+        description: "Discount applied to this item (0-1)"
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['order_id', 'item_id']
+          name: unique_order_item_combo
+      - dbt_utils.expression_is_true:
+              expression: " list_price > 0"
+  - name: stg_localbike__products
+    description: "This model contains product information"
+    columns:
+      - name: product_id
+        description: "Primary key, unique identifier for each product."
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Name of the product"
+        tests:
+          - not_null
+      - name: brand_id
+        description: "Foreign key, referenced in brands table"
+        tests:
+          - not_null
+          - relationships:
+              name: brand_id_foreign_key_in_stg_localbike__products
+              to:   ref('stg_localbike__brands') 
+              field: brand_id
+      - name: category_id
+        description: "Foreign key, referenced in categories table"
+        tests:
+          - not_null
+          - relationships:
+              name: category_id_foreign_key_in_stg_localbike__products
+              to:    ref('stg_localbike__categories') 
+              field: category_id
+      - name: model_year
+        description: "Model year of the product"
+        tests:
+          - not_null
+      - name: list_price
+        description: "Current list price of the product"
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+              expression: " list_price > 0"
+  - name: stg_localbike__staffs
+    description: "This model contains staff information"
+    columns:
+      - name: staff_id
+        description: "Primary key, unique identifier for each staff member."
+        tests:
+          - unique
+          - not_null
+      - name: first_name
+        description: "Staff member's first name"
+        tests:
+          - not_null
+      - name: last_name
+        description: "Staff member's last name"
+        tests:
+          - not_null
+      - name: email
+        description: "Staff member's email address"
+        tests:
+          - unique
+          - not_null
+      - name: phone
+        description: "Staff member's phone number"
+      - name: active
+        description: "Whether the staff member is active (1) or not (0)"
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: store_id
+        description: "Foreign key, referenced in stores table"
+        tests:
+          - relationships:
+              name: store_id_foreign_key_in_stg_localbike__staffs
+              to:   ref('stg_localbike__stores') 
+              field: store_id
+      - name: manager_id
+        description: "Foreign key to staffs table (self-referencing)"
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "manager_id IS NULL OR manager_id != staff_id"
+          name: manager_not_self
+  - name: stg_localbike__stocks
+    description: "This model contains inventory stock information by store"
+    columns:
+      - name: store_id
+        description: "Foreign key, referenced in stores table"
+        tests:
+          - not_null
+          - relationships:
+              name: store_id_foreign_key_in_stg_localbike__stocks
+              to:    ref('stg_localbike__stores') 
+              field: store_id
+      - name: product_id
+        description: "Foreign key, referenced in products table"
+        tests:
+          - not_null
+          - relationships:
+              name: product_id_foreign_key_in_stg_localbike__stocks
+              to:   ref('stg_localbike__products') 
+              field: product_id
+      - name: quantity
+        description: "Quantity of product available in store"
+        tests:
+          - not_null
+
+  - name: stg_localbike__stores
+    description: "This model contains store information"
+    columns:
+      - name: store_id
+        description: "Primary key, unique identifier for each store."
+        tests:
+          - unique
+          - not_null
+      - name: store_name
+        description: "Name of the store"
+        tests:
+          - not_null
+      - name: phone
+        description: "Store phone number"
+      - name: email
+        description: "Store email address"
+        tests:
+          - unique
+      - name: street
+        description: "Store street address"
+      - name: city
+        description: "Store city"
+      - name: state
+        description: "Store state (2-letter code)"
+      - name: zip_code
+        description: "Store ZIP code"
